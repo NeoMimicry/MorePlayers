@@ -348,7 +348,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 
 - 🐛 [Report Issues](../../issues)
 - 💬 [Discussions](../../discussions)
-- 📧 Contact: [Your Contact]
+- 📧 Contact: andy@0c.md
 
 ---
 
