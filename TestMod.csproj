@@ -40,6 +40,10 @@
       <HintPath>Libs\MelonLoader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="MemoryPack.Core">
+      <HintPath>Libs\MemoryPack.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="netstandard">
       <HintPath>Libs\netstandard.dll</HintPath>
       <Private>False</Private>
