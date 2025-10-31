@@ -28,6 +28,8 @@ namespace MorePlayers
             MelonLogger.Msg("Target: FishySteamworks.Server.ServerSocket");
             MelonLogger.Msg("Goal: Remove 4-player limit, set to 999");
             MelonLogger.Msg("");
+            MelonLogger.Msg("");
+            MelonLogger.Msg("Hello ash and SAZartist from the Vault");
             
             try
             {
