@@ -749,4 +749,106 @@ namespace MorePlayers
             return false;
         }
     }
+
+    // PATCH 11a: UIPrefab_InGameMenu.SetPingImage - подавление краша
+    [HarmonyPatch]
+    public class InGameMenu_SetPingImage_Patch
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            var assembly = typeof(FishySteamworks.Server.ServerSocket).Assembly;
+            var uiMenuType = assembly.GetTypes().FirstOrDefault(t => t.Name == "UIPrefab_InGameMenu");
+            
+            if (uiMenuType != null)
+            {
+                var method = uiMenuType.GetMethod("SetPingImage", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (method != null)
+                {
+                    MelonLogger.Msg("[PATCH 11a] Target found: UIPrefab_InGameMenu.SetPingImage()");
+                    return new[] { method };
+                }
+            }
+            
+            MelonLogger.Warning("[PATCH 11a] UIPrefab_InGameMenu.SetPingImage not found");
+            return new MethodBase[0];
+        }
+
+        static System.Exception Finalizer(System.Exception __exception)
+        {
+            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
+            {
+                MelonLogger.Warning("[PATCH 11a] Prevented ArgumentOutOfRangeException in SetPingImage - 5+ players UI limited to 4 slots");
+                return null;
+            }
+            return __exception;
+        }
+    }
+
+    // PATCH 11b: UIPrefab_InGameMenu.InitializePlayerUI - подавление краша
+    [HarmonyPatch]
+    public class InGameMenu_InitPlayerUI_Patch
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            var assembly = typeof(FishySteamworks.Server.ServerSocket).Assembly;
+            var uiMenuType = assembly.GetTypes().FirstOrDefault(t => t.Name == "UIPrefab_InGameMenu");
+            
+            if (uiMenuType != null)
+            {
+                var method = uiMenuType.GetMethod("InitializePlayerUI", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (method != null)
+                {
+                    MelonLogger.Msg("[PATCH 11b] Target found: UIPrefab_InGameMenu.InitializePlayerUI()");
+                    return new[] { method };
+                }
+            }
+            
+            MelonLogger.Warning("[PATCH 11b] UIPrefab_InGameMenu.InitializePlayerUI not found");
+            return new MethodBase[0];
+        }
+
+        static System.Exception Finalizer(System.Exception __exception)
+        {
+            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
+            {
+                MelonLogger.Warning("[PATCH 11b] Prevented ArgumentOutOfRangeException in InitializePlayerUI - 5+ players UI limited");
+                return null;
+            }
+            return __exception;
+        }
+    }
+
+    // PATCH 11c: UIPrefab_SurvivalResult.PatchParameter - подавление краша
+    [HarmonyPatch]
+    public class SurvivalResult_PatchParameter_Patch
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            var assembly = typeof(FishySteamworks.Server.ServerSocket).Assembly;
+            var survivalResultType = assembly.GetTypes().FirstOrDefault(t => t.Name == "UIPrefab_SurvivalResult");
+            
+            if (survivalResultType != null)
+            {
+                var method = survivalResultType.GetMethod("PatchParameter", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (method != null)
+                {
+                    MelonLogger.Msg("[PATCH 11c] Target found: UIPrefab_SurvivalResult.PatchParameter()");
+                    return new[] { method };
+                }
+            }
+            
+            MelonLogger.Warning("[PATCH 11c] UIPrefab_SurvivalResult.PatchParameter not found");
+            return new MethodBase[0];
+        }
+
+        static System.Exception Finalizer(System.Exception __exception)
+        {
+            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
+            {
+                MelonLogger.Warning("[PATCH 11c] Prevented ArgumentOutOfRangeException in SurvivalResult - results screen limited");
+                return null;
+            }
+            return __exception;
+        }
+    }
 }

@@ -2,7 +2,7 @@
 
 Remove the 4-player limit in MIMESIS multiplayer sessions.
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![Version](https://img.shields.io/badge/version-1.0.5-blue)
 ![Game](https://img.shields.io/badge/game-MIMESIS-purple)
 ![MelonLoader](https://img.shields.io/badge/MelonLoader-0.6.1+-green)
 ![Status](https://img.shields.io/badge/status-working-brightgreen)
@@ -276,7 +276,34 @@ If you see this, the mod is working, but there might be other limitations.
 
 ## 📝 Changelog
 
-### Version 1.0.4 (Current) - BREAKTHROUGH! 🚀
+### Version 1.0.5 (Current) - UI Crash Fix! 🛡️
+
+**CRITICAL FIX:**
+- **[PATCH 11]** UI Bounds Checking - Prevents crashes with 5+ players
+  - **Problem:** UI has only 4 slots → crashes when 5+ players join
+  - **Solution:** Cyclic slot usage - 5th player uses slot 0, 6th uses slot 1, etc.
+  - **Impact:** No more crashes! Game stable with unlimited players
+- **Code Cleanup:** Removed all commented-out patches, clean code structure
+- **All Patches:** 11 total (9 core + 3 UI protection)
+
+### Version 1.0.5 - Results Screen Fix! 🎯
+
+**CRITICAL FIX:**
+- **[PATCH 10]** ⭐ DeathMatchPlayerResult Array Expansion
+  - **Problem:** Results screen doesn't show after match with 5+ players
+  - **Cause:** Arrays hardcoded to size 4: `new DeathMatchPlayerResult[4]`
+  - **Solution:** Expands all result arrays from 4 to 999 slots
+  - **Impact:** Results screen now works with unlimited players!
+
+**How it works:**
+- Scans all methods working with `DeathMatchPlayerResult[]`
+- Finds IL code creating arrays: `ldc.i4.4; newarr DeathMatchPlayerResult`
+- Replaces size 4 with 999 using IL Transpiler
+- Covers: ResultScreen, ScoreBoard, DeathMatch, and all ReluProtocol classes
+
+**All Patches (10 total):** Network (1-4), Rooms (5, 8), Validation (6, 7), Steam (9), Results (10)
+
+### Version 1.0.4 - BREAKTHROUGH! 🚀
 
 **CRITICAL FIXES based on working mod:**
 - **[PATCH 7]** ⭐⭐ `CanEnterChannel()` - THE PRIMARY validation method!
