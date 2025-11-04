@@ -7,6 +7,8 @@ Remove the 4-player limit in MIMESIS multiplayer sessions.
 ![MelonLoader](https://img.shields.io/badge/MelonLoader-0.6.1+-green)
 ![Status](https://img.shields.io/badge/status-working-brightgreen)
 
+You can join the Discord server dedicated to the development of mods for the game Mimesis: https://discord.gg/gNVPrR2YyH
+
 ## 📖 Description
 
 This mod patches the multiplayer player limit in MIMESIS, allowing more than 4 players to join a single session. The mod uses HarmonyX patches to modify server-side validation checks.
