@@ -1,0 +1,10 @@
+{
+    "name": "MorePlayers",
+    "version_number": "1.2.0",
+    "website_url": "https://github.com/Rxflex/MimesisMorePlayersMod",
+    "description": "Remove the 4-player limit in MIMESIS multiplayer sessions. ",
+    "dependencies": [
+        "LavaGang-MelonLoader-0.7.1",
+        "NeoMimicry-MimicAPI-0.0.0"
+    ]
+}
