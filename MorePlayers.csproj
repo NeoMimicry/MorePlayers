@@ -7,7 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="0Harmony">
-            <HintPath>$(BepInExAssemblyPath)\0Harmony.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\0Harmony.dll</HintPath>
         </Reference>
         <Reference Include="AllIn1SpriteShaderAssembly">
             <HintPath>$(GameAssemblyPath)\AllIn1SpriteShaderAssembly.dll</HintPath>
@@ -22,7 +22,7 @@
             <HintPath>$(GameAssemblyPath)\Assembly-CSharp-firstpass.dll</HintPath>
         </Reference>
         <Reference Include="AssetsTools.NET">
-            <HintPath>$(BepInExAssemblyPath)\AssetsTools.NET.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\AssetsTools.NET.dll</HintPath>
         </Reference>
         <Reference Include="Autodesk.Fbx">
             <HintPath>$(GameAssemblyPath)\Autodesk.Fbx.dll</HintPath>
@@ -112,10 +112,10 @@
             <HintPath>$(GameAssemblyPath)\MagicaCloth.dll</HintPath>
         </Reference>
         <Reference Include="MelonLoader">
-            <HintPath>$(BepInExAssemblyPath)\MelonLoader.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\MelonLoader.dll</HintPath>
         </Reference>
         <Reference Include="MelonLoader.NativeHost">
-            <HintPath>$(BepInExAssemblyPath)\MelonLoader.NativeHost.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\MelonLoader.NativeHost.dll</HintPath>
         </Reference>
         <Reference Include="MemoryPack.Core">
             <HintPath>$(GameAssemblyPath)\MemoryPack.Core.dll</HintPath>
@@ -154,28 +154,28 @@
             <HintPath>$(GameAssemblyPath)\Microsoft.Extensions.Primitives.dll</HintPath>
         </Reference>
         <Reference Include="MimicAPI">
-          <HintPath>..\..\Files\MIMESIS-SteamRIP.com\MIMESIS\Mods\MimicAPI.dll</HintPath>
+          <HintPath>$(PluginsPath)\MimicAPI.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Cecil">
-            <HintPath>$(BepInExAssemblyPath)\Mono.Cecil.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\Mono.Cecil.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Cecil.Mdb">
-            <HintPath>$(BepInExAssemblyPath)\Mono.Cecil.Mdb.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\Mono.Cecil.Mdb.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Cecil.Pdb">
-            <HintPath>$(BepInExAssemblyPath)\Mono.Cecil.Pdb.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\Mono.Cecil.Pdb.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Cecil.Rocks">
-            <HintPath>$(BepInExAssemblyPath)\Mono.Cecil.Rocks.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\Mono.Cecil.Rocks.dll</HintPath>
         </Reference>
         <Reference Include="Mono.Security">
             <HintPath>$(GameAssemblyPath)\Mono.Security.dll</HintPath>
         </Reference>
         <Reference Include="MonoMod.RuntimeDetour">
-            <HintPath>$(BepInExAssemblyPath)\MonoMod.RuntimeDetour.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\MonoMod.RuntimeDetour.dll</HintPath>
         </Reference>
         <Reference Include="MonoMod.Utils">
-            <HintPath>$(BepInExAssemblyPath)\MonoMod.Utils.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\MonoMod.Utils.dll</HintPath>
         </Reference>
         <Reference Include="MoreMountains.Tools">
             <HintPath>$(GameAssemblyPath)\MoreMountains.Tools.dll</HintPath>
@@ -487,10 +487,10 @@
             <HintPath>$(GameAssemblyPath)\UnityEngine.HotReloadModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.Il2CppAssetBundleManager">
-            <HintPath>$(BepInExAssemblyPath)\UnityEngine.Il2CppAssetBundleManager.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\UnityEngine.Il2CppAssetBundleManager.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.Il2CppImageConversionManager">
-            <HintPath>$(BepInExAssemblyPath)\UnityEngine.Il2CppImageConversionManager.dll</HintPath>
+            <HintPath>$(MelonLoaderAssemblyPath)\UnityEngine.Il2CppImageConversionManager.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.ImageConversionModule">
             <HintPath>$(GameAssemblyPath)\UnityEngine.ImageConversionModule.dll</HintPath>

@@ -2,7 +2,7 @@
 <Project>
     <PropertyGroup>
         <!-- Game paths -->
-        <GamePath>C:\Users\Administrator\Downloads\Files\MIMESIS-SteamRIP.com\MIMESIS</GamePath>
++       <GamePath Condition="'$(GamePath)' == ''">$(MIMESIS_GAME_PATH)</GamePath>  
         <GameAssemblyPath>$(GamePath)\MIMESIS_Data\Managed</GameAssemblyPath>
         <BepInExAssemblyPath>$(GamePath)\MelonLoader\net6</BepInExAssemblyPath>
         <PluginsPath>$(GamePath)\Mods</PluginsPath>

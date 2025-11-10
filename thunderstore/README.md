@@ -269,7 +269,7 @@ If you see this, the mod is working, but there might be other limitations.
 
 3. Build the project:
    ```powershell
-   MSBuild.exe TestMod.csproj /p:Configuration=Release
++  MSBuild.exe MorePlayers.csproj /p:Configuration=Release  
    ```
 
 4. Output will be in `Output/MorePlayers.dll`
