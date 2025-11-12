@@ -1,12 +1,17 @@
-﻿using MelonLoader;
-using HarmonyLib;
-using System.Reflection;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib;
+using MelonLoader;
 using MimicAPI.GameAPI;
 
-[assembly: MelonInfo(typeof(MorePlayers.MorePlayersMod), "MorePlayers", "1.2.1", "github.com/Rxflex")]
+[assembly: MelonInfo(
+    typeof(MorePlayers.MorePlayersMod),
+    "MorePlayers",
+    "1.3.0",
+    "github.com/Rxflex"
+)]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 
 namespace MorePlayers
@@ -17,252 +22,294 @@ namespace MorePlayers
 
         public override void OnInitializeMelon()
         {
-            var harmony = new HarmonyLib.Harmony("com.moreplayers.mod");
-            harmony.PatchAll(typeof(MorePlayersMod).Assembly);
-        }
-    }
+            var harmonyInstance = new HarmonyLib.Harmony("com.moreplayers.mod");
 
-    [HarmonyPatch(typeof(FishySteamworks.Server.ServerSocket), "GetMaximumClients")]
-    public class GetMaximumClients_Patch
-    {
-        static bool Prefix(ref int __result)
+            PatchServerSocket(harmonyInstance);
+            PatchIVroom(harmonyInstance);
+            PatchVRoomManager(harmonyInstance);
+            PatchGameSessionInfo(harmonyInstance);
+            PatchSteamInviteDispatcher(harmonyInstance);
+        }
+
+        private void PatchServerSocket(HarmonyLib.Harmony harmony)
         {
-            __result = MorePlayersMod.MAX_PLAYERS;
+            try
+            {
+                var getMaxMethod = ServerNetworkAPI.GetServerSocketMethod("GetMaximumClients");
+                var setMaxMethod = ServerNetworkAPI.GetServerSocketMethod("SetMaximumClients");
+
+                if (getMaxMethod != null)
+                {
+                    var prefix = typeof(MorePlayersMod).GetMethod(
+                        nameof(GetMaximumClients_Prefix),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(getMaxMethod, prefix: new HarmonyMethod(prefix));
+                }
+
+                if (setMaxMethod != null)
+                {
+                    var prefix = typeof(MorePlayersMod).GetMethod(
+                        nameof(SetMaximumClients_Prefix),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(setMaxMethod, prefix: new HarmonyMethod(prefix));
+                }
+
+                var serverSocket = ServerNetworkAPI.GetServerSocket();
+                if (serverSocket != null)
+                {
+                    var serverSocketType = serverSocket.GetType();
+                    var ctors = serverSocketType.GetConstructors(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
+                    if (ctors.Length > 0)
+                    {
+                        var postfix = typeof(MorePlayersMod).GetMethod(
+                            nameof(ServerSocket_Constructor_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic
+                        );
+                        harmony.Patch(ctors[0], postfix: new HarmonyMethod(postfix));
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void PatchIVroom(HarmonyLib.Harmony harmony)
+        {
+            try
+            {
+                var canEnterMethod = ServerNetworkAPI.GetIVroomMethod("CanEnterChannel");
+                var getMemberCountMethod = ServerNetworkAPI.GetIVroomMethod("GetMemberCount");
+
+                if (canEnterMethod != null)
+                {
+                    var transpiler = typeof(MorePlayersMod).GetMethod(
+                        nameof(IVroom_CanEnterChannel_Transpiler),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(canEnterMethod, transpiler: new HarmonyMethod(transpiler));
+                }
+
+                if (getMemberCountMethod != null)
+                {
+                    var prefix = typeof(MorePlayersMod).GetMethod(
+                        nameof(IVroom_GetMemberCount_Prefix),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(getMemberCountMethod, prefix: new HarmonyMethod(prefix));
+                }
+            }
+            catch { }
+        }
+
+        private void PatchVRoomManager(HarmonyLib.Harmony harmony)
+        {
+            try
+            {
+                var transpiler = typeof(MorePlayersMod).GetMethod(
+                    nameof(VRoomManager_Transpiler),
+                    BindingFlags.Static | BindingFlags.NonPublic
+                );
+
+                var methods = new[] { "EnterMaintenenceRoom", "EnterWaitingRoom" };
+                foreach (var methodName in methods)
+                {
+                    var method = ServerNetworkAPI.GetVRoomManagerMethod(methodName);
+                    if (method != null)
+                    {
+                        harmony.Patch(method, transpiler: new HarmonyMethod(transpiler));
+                    }
+                }
+
+                var pendStartMethods = new[]
+                {
+                    "PendStartGame",
+                    "PendStartSession",
+                    "OnFinishGame",
+                };
+                var pendTranspiler = typeof(MorePlayersMod).GetMethod(
+                    nameof(VRoomManager_PendStart_Transpiler),
+                    BindingFlags.Static | BindingFlags.NonPublic
+                );
+
+                foreach (var methodName in pendStartMethods)
+                {
+                    var method = ServerNetworkAPI.GetVRoomManagerMethod(methodName);
+                    if (method != null)
+                    {
+                        harmony.Patch(method, transpiler: new HarmonyMethod(pendTranspiler));
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void PatchGameSessionInfo(HarmonyLib.Harmony harmony)
+        {
+            try
+            {
+                var method = ServerNetworkAPI.GetServerMethod(
+                    "GameSessionInfo",
+                    "AddPlayerSteamID"
+                );
+
+                if (method != null)
+                {
+                    var transpiler = typeof(MorePlayersMod).GetMethod(
+                        nameof(IVroom_CanEnterChannel_Transpiler),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(method, transpiler: new HarmonyMethod(transpiler));
+                }
+            }
+            catch { }
+        }
+
+        private void PatchSteamInviteDispatcher(HarmonyLib.Harmony harmony)
+        {
+            try
+            {
+                var method = ServerNetworkAPI.GetSteamInviteMethod("CreateLobby");
+
+                if (method != null)
+                {
+                    var prefix = typeof(MorePlayersMod).GetMethod(
+                        nameof(CreateLobby_Prefix),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+                    harmony.Patch(method, prefix: new HarmonyMethod(prefix));
+                }
+            }
+            catch { }
+        }
+
+        private static bool GetMaximumClients_Prefix(ref int __result)
+        {
+            __result = MAX_PLAYERS;
             return false;
         }
-    }
 
-    [HarmonyPatch(typeof(FishySteamworks.Server.ServerSocket), "SetMaximumClients")]
-    public class SetMaximumClients_Patch
-    {
-        static bool Prefix(FishySteamworks.Server.ServerSocket __instance, ref int value)
+        private static bool SetMaximumClients_Prefix(ref int value)
         {
-            if (value < MorePlayersMod.MAX_PLAYERS)
-            {
-                ServerNetworkAPI.SetMaximumClients(__instance, MorePlayersMod.MAX_PLAYERS);
-                return false;
-            }
+            if (value < MAX_PLAYERS)
+                value = MAX_PLAYERS;
             return true;
         }
-    }
 
-    [HarmonyPatch(typeof(FishySteamworks.Server.ServerSocket), MethodType.Constructor)]
-    public class ServerSocket_Constructor_Patch
-    {
-        static void Postfix(FishySteamworks.Server.ServerSocket __instance)
-        {
-            ServerNetworkAPI.SetMaximumClients(__instance, MorePlayersMod.MAX_PLAYERS);
-        }
-    }
-
-    [HarmonyPatch]
-    public class MaximumClients_Transpiler_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            return ServerNetworkAPI.GetAllServerSocketMethods();
-        }
-
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
-        {
-            var codes = new List<CodeInstruction>(instructions);
-            var fieldInfo = ServerNetworkAPI.GetMaximumClientsField();
-
-            if (fieldInfo == null)
-                return codes;
-
-            for (int i = 0; i < codes.Count; i++)
-            {
-                if (codes[i].LoadsField(fieldInfo))
-                {
-                    codes.InsertRange(i + 1, new[]
-                    {
-                        new CodeInstruction(OpCodes.Pop),
-                        new CodeInstruction(OpCodes.Ldc_I4, MorePlayersMod.MAX_PLAYERS)
-                    });
-                    i += 2;
-                }
-            }
-
-            return codes;
-        }
-    }
-
-    [HarmonyPatch]
-    public class EnterWaitingRoom_SetMaxPlayers_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetVRoomManagerMethod("EnterWaitingRoom");
-            return method != null ? new[] { method } : new MethodBase[0];
-        }
-
-        static void Prefix(object __instance)
+        private static void ServerSocket_Constructor_Postfix(object __instance)
         {
             try
             {
-                var waitingRoom = ServerNetworkAPI.GetWaitingRoom();
-                if (waitingRoom != null)
-                    RoomAPI.SetRoomMaxPlayers(waitingRoom, MorePlayersMod.MAX_PLAYERS);
+                var type = __instance.GetType();
+                var setMethod = type.GetMethod(
+                    "SetMaximumClients",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+                setMethod?.Invoke(__instance, new object[] { MAX_PLAYERS });
             }
             catch { }
         }
-    }
 
-    [HarmonyPatch]
-    public class CanEnterChannel_AllRooms_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            List<MethodBase> methods = new List<MethodBase>();
-
-            var waitingRoomMethod = ServerNetworkAPI.GetRoomMethod("VWaitingRoom", "CanEnterChannel");
-            if (waitingRoomMethod != null)
-                methods.Add(waitingRoomMethod);
-
-            var maintenanceRoomMethod = ServerNetworkAPI.GetRoomMethod("MaintenanceRoom", "CanEnterChannel");
-            if (maintenanceRoomMethod != null)
-                methods.Add(maintenanceRoomMethod);
-
-            return methods;
-        }
-
-        static bool Prefix(ref object __result, object __instance, long playerUID)
-        {
-            try
-            {
-                int count = ServerNetworkAPI.GetRoomMemberCount(__instance);
-                var msgErrorCode = ServerNetworkAPI.GetMsgErrorCodeType();
-
-                if (msgErrorCode != null && msgErrorCode.IsEnum)
-                {
-                    if (count >= MorePlayersMod.MAX_PLAYERS)
-                        __result = System.Enum.Parse(msgErrorCode, "PlayerCountExceeded");
-                    else
-                        __result = System.Enum.Parse(msgErrorCode, "Success");
-                }
-
-                return false;
-            }
-            catch
-            {
-                return true;
-            }
-        }
-    }
-
-    [HarmonyPatch]
-    public class EnterMaintenenceRoom_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetVRoomManagerMethod("EnterMaintenenceRoom");
-            return method != null ? new[] { method } : new MethodBase[0];
-        }
-
-        static void Prefix(object __instance)
-        {
-            try
-            {
-                var maintenanceRoom = ServerNetworkAPI.GetMaintenanceRoom();
-                if (maintenanceRoom != null)
-                    RoomAPI.SetRoomMaxPlayers(maintenanceRoom, MorePlayersMod.MAX_PLAYERS);
-            }
-            catch { }
-        }
-    }
-
-    [HarmonyPatch]
-    public class SteamLobbyCreation_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetSteamInviteMethod("CreateLobby");
-            return method != null ? new[] { method } : new MethodBase[0];
-        }
-
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        private static IEnumerable<CodeInstruction> IVroom_CanEnterChannel_Transpiler(
+            IEnumerable<CodeInstruction> instructions
+        )
         {
             var codes = new List<CodeInstruction>(instructions);
 
             for (int i = 0; i < codes.Count; i++)
             {
-                if (codes[i].opcode == OpCodes.Ldc_I4_4 ||
-                    (codes[i].opcode == OpCodes.Ldc_I4_S && codes[i].operand is sbyte && (sbyte)codes[i].operand == 4) ||
-                    (codes[i].opcode == OpCodes.Ldc_I4 && codes[i].operand is int && (int)codes[i].operand == 4))
-                {
-                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4, MorePlayersMod.MAX_PLAYERS);
-                }
+                if (codes[i].opcode == OpCodes.Ldc_I4_4)
+                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4, MAX_PLAYERS);
             }
 
             return codes;
         }
-    }
 
-    [HarmonyPatch]
-    public class GetMemberCount_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetRoomMethod("VWaitingRoom", "GetMemberCount");
-            return method != null ? new[] { method } : new MethodBase[0];
-        }
-
-        static bool Prefix(ref int __result, object __instance)
+        private static bool IVroom_GetMemberCount_Prefix(ref int __result)
         {
             __result = 0;
             return false;
         }
-    }
 
-    [HarmonyPatch]
-    public class InGameMenu_SetPingImage_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
+        private static IEnumerable<CodeInstruction> VRoomManager_Transpiler(
+            IEnumerable<CodeInstruction> instructions
+        )
         {
-            var method = ServerNetworkAPI.GetUIMethod("UIPrefab_InGameMenu", "SetPingImage");
-            return method != null ? new[] { method } : new MethodBase[0];
+            var codes = new List<CodeInstruction>(instructions);
+
+            for (int i = 0; i < codes.Count; i++)
+            {
+                if (codes[i].opcode == OpCodes.Ldc_I4_4)
+                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4, MAX_PLAYERS);
+            }
+
+            return codes;
         }
 
-        static System.Exception Finalizer(System.Exception __exception)
+        private static IEnumerable<CodeInstruction> VRoomManager_PendStart_Transpiler(
+            IEnumerable<CodeInstruction> instructions
+        )
         {
-            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
-                return null;
-            return __exception;
-        }
-    }
+            var codes = new List<CodeInstruction>(instructions);
 
-    [HarmonyPatch]
-    public class InGameMenu_InitPlayerUI_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetUIMethod("UIPrefab_InGameMenu", "InitializePlayerUI");
-            return method != null ? new[] { method } : new MethodBase[0];
+            for (int i = 0; i < codes.Count; i++)
+            {
+                if (codes[i].opcode == OpCodes.Ldc_I4_3)
+                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4, MAX_PLAYERS);
+            }
+
+            return codes;
         }
 
-        static System.Exception Finalizer(System.Exception __exception)
+        private static bool CreateLobby_Prefix(bool isOpenForRandomMatch)
         {
-            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
-                return null;
-            return __exception;
-        }
-    }
+            try
+            {
+                var steamMatchmakingType = Type.GetType(
+                    "Steamworks.SteamMatchmaking, com.rlabrecque.steamworks.net"
+                );
+                var eLobbyTypeType = Type.GetType(
+                    "Steamworks.ELobbyType, com.rlabrecque.steamworks.net"
+                );
+                var playerPrefsType = Type.GetType(
+                    "UnityEngine.PlayerPrefs, UnityEngine.CoreModule"
+                );
 
-    [HarmonyPatch]
-    public class SurvivalResult_PatchParameter_Patch
-    {
-        static IEnumerable<MethodBase> TargetMethods()
-        {
-            var method = ServerNetworkAPI.GetUIMethod("UIPrefab_SurvivalResult", "PatchParameter");
-            return method != null ? new[] { method } : new MethodBase[0];
-        }
+                if (
+                    steamMatchmakingType == null
+                    || eLobbyTypeType == null
+                    || playerPrefsType == null
+                )
+                    return true;
 
-        static System.Exception Finalizer(System.Exception __exception)
-        {
-            if (__exception != null && __exception is System.ArgumentOutOfRangeException)
-                return null;
-            return __exception;
+                var createLobbyMethod = steamMatchmakingType.GetMethod(
+                    "CreateLobby",
+                    BindingFlags.Public | BindingFlags.Static
+                );
+                var setIntMethod = playerPrefsType.GetMethod(
+                    "SetInt",
+                    BindingFlags.Public | BindingFlags.Static
+                );
+
+                if (createLobbyMethod == null || setIntMethod == null)
+                    return true;
+
+                var friendsOnly = Enum.ToObject(eLobbyTypeType, 2);
+                createLobbyMethod.Invoke(null, new object[] { friendsOnly, MAX_PLAYERS });
+                setIntMethod.Invoke(
+                    null,
+                    new object[] { "TempLobbyIsOpen", isOpenForRandomMatch ? 1 : 0 }
+                );
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"CreateLobby patch error: {ex.Message}");
+                return true;
+            }
         }
     }
 }
