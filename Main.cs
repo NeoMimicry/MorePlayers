@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using MimicAPI.GameAPI;
 
-[assembly: MelonInfo(typeof(MorePlayers.MorePlayersMod), "MorePlayers", "1.2.0", "github.com/Rxflex")]
+[assembly: MelonInfo(typeof(MorePlayers.MorePlayersMod), "MorePlayers", "1.2.1", "github.com/Rxflex")]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 
 namespace MorePlayers
