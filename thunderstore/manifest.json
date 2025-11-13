@@ -1,6 +1,6 @@
 {
     "name": "MorePlayers",
-    "version_number": "1.3.0",
+    "version_number": "1.5.0",
     "website_url": "https://github.com/Rxflex/MimesisMorePlayersMod",
     "description": "Remove the 4-player limit in MIMESIS multiplayer sessions. ",
     "dependencies": [
