@@ -40,20 +40,26 @@ jobs:
         run: |
           mkdir -p bundle/Mods
 
-          # Copy MorePlayers.dll
-          find MorePlayers -name "MorePlayers.dll" -path "*/bin/Release/*" -exec cp {} bundle/Mods/ \;
+          # Copy MorePlayers.dll with error handling
+          MOREDLL=$(find MorePlayers -name "MorePlayers.dll" -path "*/bin/Release/*" | head -1)
+          [ -z "$MOREDLL" ] && echo "Error: MorePlayers.dll not found" && exit 1
+          cp "$MOREDLL" bundle/Mods/
 
-          # Copy MimicAPI.dll
-          find MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" -exec cp {} bundle/Mods/ \;
+          # Copy MimicAPI.dll with error handling
+          MIMICDLL=$(find MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" | head -1)
+          [ -z "$MIMICDLL" ] && echo "Error: MimicAPI.dll not found" && exit 1
+          cp "$MIMICDLL" bundle/Mods/
 
           # Copy metadata files
           cp MorePlayers/thunderstore/manifest.json bundle/
           cp MorePlayers/thunderstore/README.md bundle/
           cp MorePlayers/thunderstore/icon.png bundle/
 
-          # Update manifest to remove MimicAPI dependency
+          # Update manifest to remove MimicAPI dependency with validation
           cd bundle
+          jq empty manifest.json || (echo "Error: Invalid manifest.json" && exit 1)
           jq '.dependencies = ["LavaGang-MelonLoader-0.7.1"]' manifest.json > manifest.tmp.json
+          jq empty manifest.tmp.json || (echo "Error: Failed to update manifest.json" && exit 1)
           mv manifest.tmp.json manifest.json
 
       - name: Create zip archive
@@ -62,7 +68,7 @@ jobs:
           zip -r ../MorePlayers-Bundle-${{ github.ref_name }}.zip .
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: MorePlayers-Bundle-${{ github.ref_name }}.zip
           body: |
