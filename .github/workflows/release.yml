@@ -1,0 +1,89 @@
+name: Build and Release Bundle
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout MorePlayers repository
+        uses: actions/checkout@v4
+        with:
+          path: MorePlayers
+
+      - name: Checkout MimicAPI repository
+        uses: actions/checkout@v4
+        with:
+          repository: NeoMimicry/MimicAPI
+          path: MimicAPI
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Build MimicAPI
+        run: |
+          cd MimicAPI
+          dotnet build -c Release
+
+      - name: Build MorePlayers
+        run: |
+          cd MorePlayers
+          dotnet build -c Release
+
+      - name: Create bundle package
+        run: |
+          mkdir -p bundle/Mods
+
+          # Copy MorePlayers.dll
+          find MorePlayers -name "MorePlayers.dll" -path "*/bin/Release/*" -exec cp {} bundle/Mods/ \;
+
+          # Copy MimicAPI.dll
+          find MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" -exec cp {} bundle/Mods/ \;
+
+          # Copy metadata files
+          cp MorePlayers/thunderstore/manifest.json bundle/
+          cp MorePlayers/thunderstore/README.md bundle/
+          cp MorePlayers/thunderstore/icon.png bundle/
+
+          # Update manifest to remove MimicAPI dependency
+          cd bundle
+          jq '.dependencies = ["LavaGang-MelonLoader-0.7.1"]' manifest.json > manifest.tmp.json
+          mv manifest.tmp.json manifest.json
+
+      - name: Create zip archive
+        run: |
+          cd bundle
+          zip -r ../MorePlayers-Bundle-${{ github.ref_name }}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: MorePlayers-Bundle-${{ github.ref_name }}.zip
+          body: |
+            ## MorePlayers Mod - Bundled Release
+
+            This release includes both `MorePlayers.dll` and `MimicAPI.dll` bundled together.
+
+            **No need to install MimicAPI separately!**
+
+            ### Installation
+            1. Download `MorePlayers-Bundle-${{ github.ref_name }}.zip`
+            2. Extract the `Mods` folder to your MIMESIS `Mods` directory
+            3. Launch the game
+
+            ### Changes
+            - Bundled MimicAPI.dll (no separate installation needed)
+            - Remove 4-player limit (supports up to 999 players)
+
+            ### Dependencies
+            - MelonLoader 0.7.1 or higher
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
