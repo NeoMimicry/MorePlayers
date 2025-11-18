@@ -1,8 +1,8 @@
 name: Build and Release Bundle
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -34,22 +34,44 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Debug - Check workspace structure
+        run: |
+          echo "=== Workspace lib structure ==="
+          find Workspace/lib -type d | head -20
+          echo ""
+          echo "=== Looking for Assembly-CSharp ==="
+          find Workspace/lib -name "Assembly-CSharp.dll" 2>/dev/null || echo "Not found"
+          echo ""
+          echo "=== Looking for game assemblies ==="
+          ls -la Workspace/lib/game/Managed/ 2>/dev/null | head -20 || echo "Managed folder not found"
+
+      - name: Override MimicAPI Directory.Build.props
+        run: |
+          cat > Workspace/MimicAPI/Directory.Build.props << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <Project>
+              <PropertyGroup>
+                  <GamePath>${{ github.workspace }}/Workspace/lib/game</GamePath>
+                  <GameAssemblyPath>${{ github.workspace }}/Workspace/lib/game/Managed</GameAssemblyPath>
+                  <MelonLoaderPath>${{ github.workspace }}/Workspace/lib/melonloader</MelonLoaderPath>
+              </PropertyGroup>
+              <PropertyGroup>
+                  <DebugType>pdbonly</DebugType>
+                  <Optimize>true</Optimize>
+                  <OutputPath>bin\$(Configuration)\</OutputPath>
+              </PropertyGroup>
+          </Project>
+          EOF
+
       - name: Build MimicAPI
         run: |
           cd Workspace/MimicAPI
-          dotnet build -c Release \
-            /p:GamePath="${{ github.workspace }}/Workspace/lib/game" \
-            /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game/Managed" \
-            /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
+          dotnet build -c Release
 
       - name: Build MorePlayers
         run: |
           cd MorePlayers
-          dotnet build -c Release \
-            /p:GamePath="${{ github.workspace }}/Workspace/lib/game" \
-            /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game/Managed" \
-            /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader" \
-            /p:PluginsPath="${{ github.workspace }}/Workspace/lib/mods"
+          dotnet build -c Release
 
       - name: Create bundle package
         run: |
