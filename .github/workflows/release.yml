@@ -118,7 +118,7 @@ jobs:
         with:
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
           community: mimesis
-          namespace: FishModsVRVR
+          namespace: Rxflex
           name: MorePlayers
           description: Remove 4-player limit and support up to 999 players
           version: ${{ needs.build.outputs.version }}
