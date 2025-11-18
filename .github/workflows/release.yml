@@ -22,13 +22,30 @@ jobs:
           repository: ${{ github.repository_owner }}/Mimesis-Workspace
           path: Workspace
           ssh-key: ${{ secrets.WORKSPACE_TOKEN }}
+      - name: Checkout MimicAPI repository
+        uses: actions/checkout@v4
+        with:
+          repository: NeoMimicry/MimicAPI
+          path: Workspace/MimicAPI
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Override Directory.Build.props
+      - name: Verify version in Loader.cs matches the tag
+        id: version-check
         run: |
-          cat > Directory.Build.props << 'EOF'
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CS_VERSION=$(grep -oP '\[assembly: MelonInfo\(typeof\(Loader\), "MorePlayers", "\K[^"]+' Core/Loader.cs)
+          echo "Tag version: $TAG_VERSION"
+          echo "Loader.cs version: $CS_VERSION"
+          if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
+            echo "Version mismatch: Tag version is $TAG_VERSION, but Loader.cs version is $CS_VERSION"
+            exit 1
+          fi
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+      - name: Override MimicAPI Directory.Build.props
+        run: |
+          cat > Workspace/MimicAPI/Directory.Build.props << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <Project>
               <PropertyGroup>
@@ -43,22 +60,26 @@ jobs:
               </PropertyGroup>
           </Project>
           EOF
-      - name: Extract version from tag
-        id: version-check
+      - name: Build MimicAPI
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/}"
-          echo "Tag version: $TAG_VERSION"
-          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
-      - name: Build the project
+          cd Workspace/MimicAPI
+          dotnet build -c Release
+      - name: Build MorePlayers
         run: >
-          dotnet build "MimicAPI.csproj" --configuration Release
-          /p:GamePath="${{ github.workspace }}/Workspace/lib/game"
-          /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game/Managed"
+          dotnet build "MorePlayers.csproj" --configuration Release
+          /p:WorkspaceLibPath="${{ github.workspace }}/Workspace/lib"
+          /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game"
+          /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
+          /p:MimicAPIPath="${{ github.workspace }}/Workspace/MimicAPI"
       - name: Prepare release directory
         run: |
           mkdir -p release
-          cp bin/Release/netstandard2.1/MimicAPI.dll release/
+          cp bin/Release/netstandard2.1/MorePlayers.dll release/
+          MIMICDLL=$(find Workspace/MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" | head -1)
+          if [ -n "$MIMICDLL" ]; then
+            cp "$MIMICDLL" release/
+          fi
           if [ -d "thunderstore" ]; then
             cp -r thunderstore/* release/ 2>/dev/null || true
             if [ -f "release/manifest.json" ]; then
@@ -66,12 +87,12 @@ jobs:
             fi
           fi
       - name: Create release ZIP
-        run: zip -j "MimicAPI_${{ steps.version-check.outputs.version }}.zip" release/*
+        run: zip -j "MorePlayers_${{ steps.version-check.outputs.version }}.zip" release/*
       - name: Upload Release ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: MimicAPI
-          path: "MimicAPI_${{ steps.version-check.outputs.version }}.zip"
+          name: MorePlayers
+          path: "MorePlayers_${{ steps.version-check.outputs.version }}.zip"
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -79,16 +100,16 @@ jobs:
       - name: Download built ZIP
         uses: actions/download-artifact@v4
         with:
-          name: MimicAPI
+          name: MorePlayers
       - name: Extract DLL from ZIP
         run: |
           mkdir -p release
-          unzip -q "MimicAPI_${{ needs.build.outputs.version }}.zip" -d release/
+          unzip -q "MorePlayers_${{ needs.build.outputs.version }}.zip" -d release/
           ls -la release/
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: release/MimicAPI.dll
+          files: release/MorePlayers.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   thunderstore:
@@ -100,19 +121,19 @@ jobs:
       - name: Download built ZIP
         uses: actions/download-artifact@v4
         with:
-          name: MimicAPI
+          name: MorePlayers
       - name: Extract ZIP for Thunderstore
         run: |
           mkdir -p thunderstore-package
-          unzip -q "MimicAPI_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
+          unzip -q "MorePlayers_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
       - name: Upload to Thunderstore
         uses: GreenTF/upload-thunderstore-package@v4.3
         with:
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
           community: mimesis
-          namespace: NeoMimicry
-          name: MimicAPI
-          description: Core API for MIMESIS modding
+          namespace: FishModsVRVR
+          name: MorePlayers
+          description: Remove 4-player limit and support up to 999 players
           version: ${{ needs.build.outputs.version }}
           repo: mimesis.thunderstore.io
           path: thunderstore-package
