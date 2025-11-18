@@ -13,7 +13,7 @@ using MimicAPI.GameAPI;
 namespace MorePlayers
 {
     public class MorePlayersMod : MelonMod
-    {
+    { 
         public const int MAX_PLAYERS = 999;
 
         public override void OnInitializeMelon()
