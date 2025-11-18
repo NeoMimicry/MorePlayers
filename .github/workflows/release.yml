@@ -1,11 +1,14 @@
 name: Build and Release on Tag
+
 on:
   push:
     tags:
       - "*.*"
+
 permissions:
   contents: write
   packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,31 +19,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Checkout Workspace repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/Mimesis-Workspace
           path: Workspace
           ssh-key: ${{ secrets.WORKSPACE_TOKEN }}
+
       - name: Checkout MimicAPI repository
         uses: actions/checkout@v4
         with:
           repository: NeoMimicry/MimicAPI
           path: Workspace/MimicAPI
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Extract version from tag
+
+      - name: Verify version in Loader.cs matches the tag
         id: version-check
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
-      - name: Build MimicAPI
-        run: |
-          cd Workspace/MimicAPI
-          dotnet build -c Release
-      - name: Build MorePlayers
+
+      - name: Build the project
         run: >
           dotnet build "MorePlayers.csproj" --configuration Release
           /p:WorkspaceLibPath="${{ github.workspace }}/Workspace/lib"
@@ -48,27 +52,28 @@ jobs:
           /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
           /p:MimicAPIPath="${{ github.workspace }}/Workspace/MimicAPI"
+
       - name: Prepare release directory
         run: |
           mkdir -p release
           cp bin/Release/netstandard2.1/MorePlayers.dll release/
-          MIMICDLL=$(find Workspace/MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" | head -1)
-          if [ -n "$MIMICDLL" ]; then
-            cp "$MIMICDLL" release/
-          fi
           if [ -d "thunderstore" ]; then
             cp -r thunderstore/* release/ 2>/dev/null || true
+            # Update version in manifest.json if it exists
             if [ -f "release/manifest.json" ]; then
               sed -i "s/\"version_number\": \".*\"/\"version_number\": \"${{ steps.version-check.outputs.version }}\"/" release/manifest.json
             fi
           fi
+
       - name: Create release ZIP
         run: zip -j "MorePlayers_${{ steps.version-check.outputs.version }}.zip" release/*
+
       - name: Upload Release ZIP
         uses: actions/upload-artifact@v4
         with:
           name: MorePlayers
           path: "MorePlayers_${{ steps.version-check.outputs.version }}.zip"
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -77,31 +82,37 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: MorePlayers
+
       - name: Extract DLL from ZIP
         run: |
           mkdir -p release
           unzip -q "MorePlayers_${{ needs.build.outputs.version }}.zip" -d release/
           ls -la release/
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: release/MorePlayers.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   thunderstore:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Download built ZIP
         uses: actions/download-artifact@v4
         with:
           name: MorePlayers
+
       - name: Extract ZIP for Thunderstore
         run: |
           mkdir -p thunderstore-package
           unzip -q "MorePlayers_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
+
       - name: Upload to Thunderstore
         uses: GreenTF/upload-thunderstore-package@v4.3
         with:
