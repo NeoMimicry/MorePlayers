@@ -43,17 +43,11 @@ jobs:
               </PropertyGroup>
           </Project>
           EOF
-      - name: Verify version in MimicAPI.csproj matches the tag
+      - name: Extract version from tag
         id: version-check
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/}"
-          CS_VERSION=$(grep -oP '<Version>\K[^<]+' MimicAPI.csproj)
           echo "Tag version: $TAG_VERSION"
-          echo "MimicAPI.csproj version: $CS_VERSION"
-          if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
-            echo "Version mismatch: Tag version is $TAG_VERSION, but MimicAPI.csproj version is $CS_VERSION"
-            exit 1
-          fi
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
       - name: Build the project
         run: >
