@@ -36,23 +36,6 @@ jobs:
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
-      - name: Override MimicAPI Directory.Build.props
-        run: |
-          cat > Workspace/MimicAPI/Directory.Build.props << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <Project>
-              <PropertyGroup>
-                  <GamePath>${{ github.workspace }}/Workspace/lib/game</GamePath>
-                  <GameAssemblyPath>${{ github.workspace }}/Workspace/lib/game/Managed</GameAssemblyPath>
-                  <MelonLoaderPath>${{ github.workspace }}/Workspace/lib/melonloader</MelonLoaderPath>
-              </PropertyGroup>
-              <PropertyGroup>
-                  <DebugType>pdbonly</DebugType>
-                  <Optimize>true</Optimize>
-                  <OutputPath>bin\$(Configuration)\</OutputPath>
-              </PropertyGroup>
-          </Project>
-          EOF
       - name: Build MimicAPI
         run: |
           cd Workspace/MimicAPI
