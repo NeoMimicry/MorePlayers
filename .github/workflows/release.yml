@@ -1,53 +1,34 @@
-name: Build and Release Bundle
+name: Build and Release on Tag
 on:
   push:
     tags:
-      - 'v*'
-
+      - "*.*"
 permissions:
   contents: write
-
+  packages: write
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version-check.outputs.version }}
     steps:
-      - name: Checkout MorePlayers repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          path: MorePlayers
-
+          fetch-depth: 0
       - name: Checkout Workspace repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/Mimesis-Workspace
           path: Workspace
           ssh-key: ${{ secrets.WORKSPACE_TOKEN }}
-
-      - name: Checkout MimicAPI repository
-        uses: actions/checkout@v4
-        with:
-          repository: NeoMimicry/MimicAPI
-          path: Workspace/MimicAPI
-
-      - name: Setup .NET
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-
-      - name: Debug - Check workspace structure
+          dotnet-version: "8.0.x"
+      - name: Override Directory.Build.props
         run: |
-          echo "=== Workspace lib structure ==="
-          find Workspace/lib -type d | head -20
-          echo ""
-          echo "=== Looking for Assembly-CSharp ==="
-          find Workspace/lib -name "Assembly-CSharp.dll" 2>/dev/null || echo "Not found"
-          echo ""
-          echo "=== Looking for game assemblies ==="
-          ls -la Workspace/lib/game/Managed/ 2>/dev/null | head -20 || echo "Managed folder not found"
-
-      - name: Override MimicAPI Directory.Build.props
-        run: |
-          cat > Workspace/MimicAPI/Directory.Build.props << 'EOF'
+          cat > Directory.Build.props << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <Project>
               <PropertyGroup>
@@ -62,74 +43,84 @@ jobs:
               </PropertyGroup>
           </Project>
           EOF
-
-      - name: Build MimicAPI
+      - name: Verify version in MimicAPI.csproj matches the tag
+        id: version-check
         run: |
-          cd Workspace/MimicAPI
-          dotnet build -c Release
-
-      - name: Build MorePlayers
-        run: |
-          cd MorePlayers
-          dotnet build -c Release
-
-      - name: Create bundle package
-        run: |
-          mkdir -p bundle/Mods
-          
-          MOREDLL=$(find MorePlayers -name "MorePlayers.dll" -path "*/bin/Release/*" | head -1)
-          if [ -z "$MOREDLL" ]; then
-            echo "Error: MorePlayers.dll not found"
+          TAG_VERSION="${GITHUB_REF#refs/tags/}"
+          CS_VERSION=$(grep -oP '<Version>\K[^<]+' MimicAPI.csproj)
+          echo "Tag version: $TAG_VERSION"
+          echo "MimicAPI.csproj version: $CS_VERSION"
+          if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
+            echo "Version mismatch: Tag version is $TAG_VERSION, but MimicAPI.csproj version is $CS_VERSION"
             exit 1
           fi
-          cp "$MOREDLL" bundle/Mods/
-          echo "Copied MorePlayers.dll: $MOREDLL"
-          
-          MIMICDLL=$(find Workspace/MimicAPI -name "MimicAPI.dll" -path "*/bin/Release/*" | head -1)
-          if [ -z "$MIMICDLL" ]; then
-            echo "Error: MimicAPI.dll not found"
-            exit 1
-          fi
-          cp "$MIMICDLL" bundle/Mods/
-          echo "Copied MimicAPI.dll: $MIMICDLL"
-          
-          cp MorePlayers/thunderstore/manifest.json bundle/
-          cp MorePlayers/thunderstore/README.md bundle/
-          cp MorePlayers/thunderstore/icon.png bundle/
-          
-          cd bundle
-          jq '.dependencies = ["LavaGang-MelonLoader-0.7.1"]' manifest.json > manifest.tmp.json && \
-          mv manifest.tmp.json manifest.json
-          cd ..
-
-      - name: Create zip archive
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+      - name: Build the project
+        run: >
+          dotnet build "MimicAPI.csproj" --configuration Release
+          /p:GamePath="${{ github.workspace }}/Workspace/lib/game"
+          /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game/Managed"
+          /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
+      - name: Prepare release directory
         run: |
-          cd bundle
-          zip -r ../MorePlayers-Bundle-${{ github.ref_name }}.zip .
-          cd ..
-          ls -lh MorePlayers-Bundle-${{ github.ref_name }}.zip
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+          mkdir -p release
+          cp bin/Release/netstandard2.1/MimicAPI.dll release/
+          if [ -d "thunderstore" ]; then
+            cp -r thunderstore/* release/ 2>/dev/null || true
+            if [ -f "release/manifest.json" ]; then
+              sed -i "s/\"version_number\": \".*\"/\"version_number\": \"${{ steps.version-check.outputs.version }}\"/" release/manifest.json
+            fi
+          fi
+      - name: Create release ZIP
+        run: zip -j "MimicAPI_${{ steps.version-check.outputs.version }}.zip" release/*
+      - name: Upload Release ZIP
+        uses: actions/upload-artifact@v4
         with:
-          files: MorePlayers-Bundle-${{ github.ref_name }}.zip
-          body: |
-            ## MorePlayers Mod - Bundled Release
-            This release includes both `MorePlayers.dll` and `MimicAPI.dll` bundled together.
-            **No need to install MimicAPI separately!**
-            
-            ### Installation
-            1. Download `MorePlayers-Bundle-${{ github.ref_name }}.zip`
-            2. Extract the `Mods` folder to your MIMESIS `Mods` directory
-            3. Launch the game
-            
-            ### Changes
-            - Bundled MimicAPI.dll (no separate installation needed)
-            - Remove 4-player limit (supports up to 999 players)
-            
-            ### Dependencies
-            - MelonLoader 0.7.1 or higher
-          draft: false
-          prerelease: false
+          name: MimicAPI
+          path: "MimicAPI_${{ steps.version-check.outputs.version }}.zip"
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: MimicAPI
+      - name: Extract DLL from ZIP
+        run: |
+          mkdir -p release
+          unzip -q "MimicAPI_${{ needs.build.outputs.version }}.zip" -d release/
+          ls -la release/
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/MimicAPI.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  thunderstore:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: MimicAPI
+      - name: Extract ZIP for Thunderstore
+        run: |
+          mkdir -p thunderstore-package
+          unzip -q "MimicAPI_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
+      - name: Upload to Thunderstore
+        uses: GreenTF/upload-thunderstore-package@v4.3
+        with:
+          token: ${{ secrets.THUNDERSTORE_TOKEN }}
+          community: mimesis
+          namespace: NeoMimicry
+          name: MimicAPI
+          description: Core API for MIMESIS modding
+          version: ${{ needs.build.outputs.version }}
+          repo: mimesis.thunderstore.io
+          path: thunderstore-package
+          categories: |
+            Mods
