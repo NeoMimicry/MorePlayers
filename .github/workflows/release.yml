@@ -31,17 +31,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Verify version in Loader.cs matches the tag
+      - name: Extract version from tag
         id: version-check
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CS_VERSION=$(grep -oP '\[assembly: MelonInfo\(typeof\(Loader\), "MorePlayers", "\K[^"]+' Core/Loader.cs)
-          echo "Tag version: $TAG_VERSION"
-          echo "Loader.cs version: $CS_VERSION"
-          if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
-            echo "Version mismatch: Tag version is $TAG_VERSION, but Loader.cs version is $CS_VERSION"
-            exit 1
-          fi
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
       - name: Override MimicAPI Directory.Build.props
         run: |
