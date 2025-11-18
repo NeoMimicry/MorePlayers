@@ -1,7 +1,7 @@
 {
     "name": "MorePlayers",
     "version_number": "1.6.0",
-    "website_url": "hhttps://github.com/NeoMimicry/MorePlayers",
+    "website_url": "https://github.com/NeoMimicry/MorePlayers",
     "description": "Remove the 4-player limit in MIMESIS multiplayer sessions. ",
     "dependencies": [
         "LavaGang-MelonLoader-0.7.1",
