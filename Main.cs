@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using HarmonyLib;
 using MelonLoader;
 using MimicAPI.GameAPI;
 
-[assembly: MelonInfo(typeof(MorePlayers.MorePlayersMod), "MorePlayers", "2.0.0", "github.com/NeoMimicry")]
+[assembly: MelonInfo(typeof(MorePlayers.MorePlayersMod), "MorePlayers", "2.0.1", "github.com/NeoMimicry")]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 
 namespace MorePlayers
@@ -109,7 +109,81 @@ namespace MorePlayers
 
         static void Postfix(object __instance)
         {
-            ServerNetworkAPI.SetMaximumClients(__instance, MorePlayersMod.MAX_PLAYERS);
+            try
+            {
+                var type = __instance.GetType();
+                var setMethod = type.GetMethod("SetMaximumClients", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                setMethod?.Invoke(__instance, new object[] { MorePlayersMod.MAX_PLAYERS });
+            }
+            catch { }
+        }
+    }
+
+    [HarmonyPatch]
+    public class GetMemberCount_Smart_Patch
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            var methods = new List<MethodBase>();
+            var ivroomType = ServerNetworkAPI.GetIVroomType();
+            var method = ivroomType?.GetMethod("GetMemberCount", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+            if (method != null)
+                methods.Add(method);
+
+            return methods;
+        }
+
+        static bool Prefix(ref int __result, object __instance)
+        {
+            try
+            {
+                int actualCount = ServerNetworkAPI.GetRoomPlayerCount(__instance);
+
+                var stackTrace = new System.Diagnostics.StackTrace();
+                bool isFromEnterCheck = false;
+                bool isFromSessionCount = false;
+
+                for (int i = 0; i < Math.Min(stackTrace.FrameCount, 10); i++)
+                {
+                    var frame = stackTrace.GetFrame(i);
+                    var method = frame?.GetMethod();
+                    if (method != null)
+                    {
+                        string methodName = method.Name;
+
+                        if (methodName.Contains("EnterWaitingRoom") || methodName.Contains("EnterMaintenenceRoom") || methodName.Contains("CanEnter"))
+                        {
+                            isFromEnterCheck = true;
+                            break;
+                        }
+
+                        if (methodName.Contains("GetSessionCount") || methodName.Contains("GetRoomMemberCount"))
+                        {
+                            isFromSessionCount = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isFromEnterCheck)
+                {
+                    __result = 0;
+                    return false;
+                }
+                else if (isFromSessionCount)
+                {
+                    __result = actualCount;
+                    return false;
+                }
+
+                __result = actualCount;
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
         }
     }
 
@@ -124,23 +198,17 @@ namespace MorePlayers
             var vWaitingRoomType = assembly?.GetType("VWaitingRoom");
             var waitingMethod = vWaitingRoomType?.GetMethod("CanEnterChannel", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (waitingMethod != null)
-            {
                 methods.Add(waitingMethod);
-            }
 
             var maintenanceRoomType = assembly?.GetType("MaintenanceRoom");
             var maintenanceMethod = maintenanceRoomType?.GetMethod("CanEnterChannel", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (maintenanceMethod != null)
-            {
                 methods.Add(maintenanceMethod);
-            }
 
             var ivroomType = assembly?.GetType("IVroom");
             var ivroomMethod = ivroomType?.GetMethod("CanEnterChannel", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (ivroomMethod != null)
-            {
                 methods.Add(ivroomMethod);
-            }
 
             return methods;
         }
@@ -149,24 +217,39 @@ namespace MorePlayers
         {
             try
             {
-                var msgErrorCodeType = ServerNetworkAPI.GetMsgErrorCodeType();
+                var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name.Contains("FishySteamworks") || a.GetName().Name == "Assembly-CSharp");
+                var msgErrorCodeType = assembly?.GetTypes().FirstOrDefault(t => t.Name == "MsgErrorCode");
+
                 if (msgErrorCodeType == null || !msgErrorCodeType.IsEnum)
                     return true;
 
-                if (ServerNetworkAPI.IsPlayerInRoom(__instance, playerUID))
+                var vPlayerDictField = __instance.GetType().GetField("_vPlayerDict", BindingFlags.NonPublic | BindingFlags.Instance);
+                var vPlayerDict = vPlayerDictField?.GetValue(__instance) as IDictionary;
+
+                if (vPlayerDict != null)
                 {
-                    __result = ServerNetworkAPI.CreateErrorCodeEnum("DuplicatePlayer");
-                    return false;
+                    foreach (var player in vPlayerDict.Values)
+                    {
+                        var uidProp = player.GetType().GetProperty("UID", BindingFlags.Public | BindingFlags.Instance);
+                        if (uidProp != null)
+                        {
+                            var uid = uidProp.GetValue(player);
+                            if (uid != null && uid.Equals(playerUID))
+                            {
+                                __result = Enum.Parse(msgErrorCodeType, "DuplicatePlayer");
+                                return false;
+                            }
+                        }
+                    }
+
+                    if (vPlayerDict.Count >= MorePlayersMod.MAX_PLAYERS)
+                    {
+                        __result = Enum.Parse(msgErrorCodeType, "PlayerCountExceeded");
+                        return false;
+                    }
                 }
 
-                int playerCount = ServerNetworkAPI.GetRoomPlayerCount(__instance);
-                if (playerCount >= MorePlayersMod.MAX_PLAYERS)
-                {
-                    __result = ServerNetworkAPI.CreateErrorCodeEnum("PlayerCountExceeded");
-                    return false;
-                }
-
-                __result = ServerNetworkAPI.CreateErrorCodeEnum("Success");
+                __result = Enum.Parse(msgErrorCodeType, "Success");
                 return false;
             }
             catch
@@ -188,10 +271,30 @@ namespace MorePlayers
             return method;
         }
 
-        static void Prefix(object __instance)
+        static void Prefix(object __instance, object context)
         {
-            var room = ServerNetworkAPI.GetWaitingRoom();
-            ServerNetworkAPI.SetRoomMaxPlayers(room, MorePlayersMod.MAX_PLAYERS);
+            try
+            {
+                var vroomsField = __instance.GetType().GetField("_vrooms", BindingFlags.NonPublic | BindingFlags.Instance);
+                var vrooms = vroomsField?.GetValue(__instance) as IDictionary;
+
+                if (vrooms != null)
+                {
+                    foreach (var room in vrooms.Values)
+                    {
+                        if (room.GetType().Name == "VWaitingRoom")
+                        {
+                            var maxPlayersField = room.GetType().BaseType?.GetField("_maxPlayers", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (maxPlayersField != null)
+                            {
+                                maxPlayersField.SetValue(room, MorePlayersMod.MAX_PLAYERS);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
     }
 
@@ -207,10 +310,30 @@ namespace MorePlayers
             return method;
         }
 
-        static void Prefix(object __instance)
+        static void Prefix(object __instance, object context)
         {
-            var room = ServerNetworkAPI.GetMaintenanceRoom();
-            ServerNetworkAPI.SetRoomMaxPlayers(room, MorePlayersMod.MAX_PLAYERS);
+            try
+            {
+                var vroomsField = __instance.GetType().GetField("_vrooms", BindingFlags.NonPublic | BindingFlags.Instance);
+                var vrooms = vroomsField?.GetValue(__instance) as IDictionary;
+
+                if (vrooms != null)
+                {
+                    foreach (var room in vrooms.Values)
+                    {
+                        if (room.GetType().Name == "MaintenanceRoom")
+                        {
+                            var maxPlayersField = room.GetType().BaseType?.GetField("_maxPlayers", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (maxPlayersField != null)
+                            {
+                                maxPlayersField.SetValue(room, MorePlayersMod.MAX_PLAYERS);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
     }
 
