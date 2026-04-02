@@ -6,6 +6,11 @@
         <NoWarn>$(NoWarn);MSB3277;MSB3270</NoWarn>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Remove="Workspace/**" />
+        <EmbeddedResource Remove="Workspace/**" />
+        <None Remove="Workspace/**" />
+    </ItemGroup>
+    <ItemGroup>
         <Reference Include="0Harmony">
             <HintPath>$(MelonLoaderPath)\0Harmony.dll</HintPath>
         </Reference>

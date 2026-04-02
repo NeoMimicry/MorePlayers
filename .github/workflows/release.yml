@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: NeoMimicry/MimicAPI
-          path: /tmp/MimicAPI
+          path: Workspace/MimicAPI
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -40,7 +40,7 @@ jobs:
 
       - name: Build MimicAPI
         run: >
-          dotnet build "/tmp/MimicAPI/MimicAPI/MimicAPI.csproj" --configuration Release
+          dotnet build "Workspace/MimicAPI/MimicAPI/MimicAPI.csproj" --configuration Release
           /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
 
@@ -56,7 +56,7 @@ jobs:
           /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game"
           /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
-          /p:PluginsPath="/tmp/MimicAPI/MimicAPI/bin/Release/netstandard2.1"
+          /p:PluginsPath="${{ github.workspace }}/Workspace/MimicAPI/MimicAPI/bin/Release/netstandard2.1"
 
       - name: Prepare release directory
         run: |
