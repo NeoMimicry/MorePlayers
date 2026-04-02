@@ -43,7 +43,6 @@ jobs:
           dotnet build "/tmp/MimicAPI/MimicAPI/MimicAPI.csproj" --configuration Release
           /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
-          /p:OutputPath="/tmp/MimicAPI/out"
 
       - name: Verify version in Loader.cs matches the tag
         id: version-check
@@ -57,7 +56,7 @@ jobs:
           /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game"
           /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game"
           /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
-          /p:PluginsPath="/tmp/MimicAPI/out"
+          /p:PluginsPath="/tmp/MimicAPI/MimicAPI/bin/Release/netstandard2.1"
 
       - name: Prepare release directory
         run: |
