@@ -30,7 +30,7 @@ namespace MorePlayers
         static IEnumerable<MethodBase> TargetMethods()
         {
             var methods = new List<MethodBase>();
-            var method = ServerNetworkAPI.GetIVroomCanEnterChannel();
+            var method = ServerNetworkAPI.GetIVroomType()?.GetMethod("CanEnterChannel", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public); ;
             if (method != null)
             {
                 methods.Add(method);
@@ -342,7 +342,7 @@ namespace MorePlayers
     {
         static MethodBase TargetMethod()
         {
-            var method = ServerNetworkAPI.GetGameSessionInfoAddPlayerSteamID();
+            var method = ServerNetworkAPI.GetGameSessionInfoType()?.GetMethod("AddPlayerSteamID", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             return method;
         }
 
